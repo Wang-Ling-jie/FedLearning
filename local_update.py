@@ -1,3 +1,8 @@
+import pickle
+import socket
+import sys
+import time
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -19,7 +24,26 @@ class local_update():
         net = CNN(args=args).to(device)
 
         # Clients load global model parameters
-        net.load_state_dict(torch.load(f"saved_models/Global{iter}.pth"))
+        # net.load_state_dict(torch.load(f"saved_models/Global{iter}.pth"))
+        # Clients receive global model parameters from server
+        s = socket.socket()
+        print("Client: Socket is created.")
+        s.connect(("localhost", 9999))
+        print("Client connected to the server")
+        # received_data = s.recv(1024 * 1024 * 100)
+        received_data = b""
+        while True:
+            packet = s.recv(4096)
+            if not packet:
+                break
+            received_data += packet
+        print("Client: Global model data from server is received. Size:{}".format(sys.getsizeof(received_data)))
+        global_model = pickle.loads(received_data)
+        net.load_state_dict(global_model)
+
+        s.close()
+        print("Client: Socket is closed.")
+
         net.train()
         # train and update
         epoch_loss = []

@@ -12,6 +12,21 @@ import args
 from CNN import CNN
 from local_update import local_update
 from test import test_img
+import socket
+import pickle
+import threading
+
+class LocalTrainThread(threading.Thread):
+    def __init__(self, args, dataset, iter, client):
+        threading.Thread.__init__(self)
+        self.args = args
+        self.dataset = dataset
+        self.iter = iter
+        self.client = client
+        self.loss = None
+    def run(self) -> None:
+        local = local_update(args=self.args, dataset=self.dataset)
+        self.loss = local.train(iter=self.iter, client=self.client)
 
 
 train_dataset_clients = []
@@ -58,25 +73,61 @@ optimizer = torch.optim.Adam(net_glob.parameters(), lr=lr)
 
 
 for iter in range(args.epochs):
-    print(f"------------------------Global Round {iter+1}--------------------------")
+    print(f"--------------------------------Global Round {iter+1}----------------------------------")
 
     w_locals = []
     loss_locals = []
     if args.select != 20:
         selected_clients = random.sample(range(0, 20), args.select)
-        print("Partial participation mode clients: ", [selected_clients[i]+1 for i in range(len(selected_clients))])
+        print("Partial participation mode clients: \n", [selected_clients[i]+1 for i in range(len(selected_clients))])
     else:
         selected_clients = range(0, 20)
 
     # server save global model parameters
-    torch.save(net_glob.state_dict(), f'./saved_models/Global{iter}.pth')
+    # torch.save(net_glob.state_dict(), f'./saved_models/Global{iter}.pth')
+    w_glob = net_glob.state_dict()
 
-    for index_clients in selected_clients:
-        print(f"----------Training on client {index_clients+1}----------")
-        local = local_update(args=args, dataset=train_dataset_clients[i])
-        loss = local.train(iter=iter, client=index_clients)
+    for index_client in selected_clients:
+        print(f"----------------Training on client {index_client+1}----------------")
+        LocalTrain = LocalTrainThread(args=args, dataset=train_dataset_clients[index_client], iter=iter, client=index_client)
+        LocalTrain.start()
+        # Server deliver global model parameters to clients
+        # Create TCP socket connection
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("localhost", 9999))
+        print("Server socket is bound to an address and port number")
+        s.listen(10)
+        print("Server is listening for a connection request")
+
+        # Accept connection request
+        connected = False
+        accept_timeout = 10
+        s.settimeout(accept_timeout)
+        try:
+            connection, address = s.accept()
+            print("Server: Connected to a client: {client_info}.".format(client_info=address))
+            connected = True
+        except socket.timeout:
+            print(
+                "Server: A socket.timeout exception occurred because the server did not receive any connection for {accept_timeout} seconds.".format(
+                    accept_timeout=accept_timeout))
+
+        # Send global model to client
+        if connected:
+            print("Server: Sending global model to client")
+            data = pickle.dumps(w_glob)
+            connection.sendall(data)
+            print("Server: Global model sent to client. Size: {size}".format(size=len(data)))
+            connection.close()
+            print("Server: Connection to client closed")
+
+        s.close()
+        print("Server socket closed")
+
+        LocalTrain.join()
+        loss = LocalTrain.loss
         # Server aggregate local models
-        w = torch.load(f'./saved_models/Local_iter{iter}_client{index_clients}.pth')
+        w = torch.load(f'./saved_models/Local_iter{iter}_client{index_client}.pth')
         w_locals.append(w)
         loss_locals.append(copy.deepcopy(loss))
     # Update global weights
