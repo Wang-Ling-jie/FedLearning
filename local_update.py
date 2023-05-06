@@ -37,7 +37,7 @@ class local_update():
             if not packet:
                 break
             received_data += packet
-        print("Client: Global model data from server is received. Size:{}".format(sys.getsizeof(received_data)))
+        print("Client: Received global model data from server. Size:{}".format(sys.getsizeof(received_data)))
         global_model = pickle.loads(received_data)
         net.load_state_dict(global_model)
 
@@ -49,7 +49,7 @@ class local_update():
         epoch_loss = []
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
-        for iter in range(self.args.client_ep):
+        for local_iter in range(self.args.client_ep):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(self.trainloader):
                 images, labels = images.to(device), labels.to(device)
@@ -60,11 +60,11 @@ class local_update():
                 optimizer.step()
                 if batch_idx % 10 == 0:
                     print('Local Epoch: {:<2d} [{:<4d}/{:<4d} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        iter, batch_idx * len(images), len(self.trainloader.dataset),
+                        local_iter, batch_idx * len(images), len(self.trainloader.dataset),
                                100. * batch_idx / len(self.trainloader), loss.item()))
                 batch_loss.append(loss.item())
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
 
-            # Clients save local model parameters
-            torch.save(net.state_dict(), f'./saved_models/Local_iter{iter}_client{client}.pth')
+        # Clients save local model parameters
+        torch.save(net.state_dict(), f'./saved_models/Local_iter{iter}_client{client}.pth')
         return sum(epoch_loss) / len(epoch_loss)

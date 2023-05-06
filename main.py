@@ -87,8 +87,8 @@ for iter in range(args.epochs):
     # torch.save(net_glob.state_dict(), f'./saved_models/Global{iter}.pth')
     w_glob = net_glob.state_dict()
 
-    for index_client in selected_clients:
-        print(f"----------------Training on client {index_client+1}----------------")
+    for (i, index_client) in enumerate(selected_clients):
+        print(f"----------------Training on client {index_client+1} ({i+1} / {len(selected_clients)})----------------")
         LocalTrain = LocalTrainThread(args=args, dataset=train_dataset_clients[index_client], iter=iter, client=index_client)
         LocalTrain.start()
         # Server deliver global model parameters to clients
@@ -146,7 +146,7 @@ for iter in range(args.epochs):
 plt.figure()
 plt.plot(range(len(loss_train)), loss_train)
 plt.ylabel('train_loss')
-plt.savefig('./save_plt/fed_model{}_epoch{}_select{}.png'.format(args.model, args.epochs, args.select))
+plt.savefig('./saved_plt/fed_model{}_epoch{}_select{}.png'.format(args.model, args.epochs, args.select))
 
 
 # testing
