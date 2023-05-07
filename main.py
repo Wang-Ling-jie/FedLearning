@@ -63,13 +63,11 @@ net_glob.train()
 w_glob = net_glob.state_dict()
 
 # training
-lr = 1e-4
 loss_train = []
 cv_loss, cv_acc = [], []
 val_loss_pre, counter = 0, 0
 net_best = None
 best_loss = None
-optimizer = torch.optim.Adam(net_glob.parameters(), lr=lr)
 
 
 for iter in range(args.epochs):
@@ -146,12 +144,12 @@ for iter in range(args.epochs):
 plt.figure()
 plt.plot(range(len(loss_train)), loss_train)
 plt.ylabel('train_loss')
-plt.savefig('./saved_plt/fed_model{}_epoch{}_select{}.png'.format(args.model, args.epochs, args.select))
+plt.savefig('./saved_plt/fed_epoch{}_select{}.png'.format(args.epochs, args.select))
 
 
 # testing
 net_glob.eval()
 acc_test, loss_test = test_img(net_glob, test_dataset, args)
 
-print("Testing accuracy: {:.2f}".format(acc_test))
+print("Testing accuracy: {:.8f}".format(acc_test))
 
