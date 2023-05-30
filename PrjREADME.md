@@ -7,6 +7,9 @@
 5. local_update.py: 定义client端本地更新函数，读入client的id，与server通信获取全局模型，返回该client的loss并回送本地更新后的模型参数
 
 运行：
-python main.py --select=xx
-其中select参数为每一轮选择的客户端数量，为0-20之间
-其他参数见args.py，包括batch_size、epoch、lr等
+
+`python main.py --select=xx`
+
+其中select参数为每一轮选择的客户端数量，可取0-20之间的整数。
+
+其他可选运行参数见args.py，包括batch_size、epoch、lr等

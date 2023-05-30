@@ -1,5 +1,8 @@
 import copy
 import socket
+import sys
+import time
+
 import dill
 import torch
 import torchvision
@@ -91,7 +94,9 @@ for iter in range(args.epochs):
         LocalTrain.start()
         # Server deliver global model parameters to clients
         # Create TCP socket connection
+        print("Server is willing to send global model to client!")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Server: Socket is created")
         s.bind(("localhost", 9999))
         print("Server socket is bound to an address and port number")
         s.listen(10)
@@ -122,10 +127,49 @@ for iter in range(args.epochs):
         s.close()
         print("Server socket closed")
 
+        # Receive local model from client
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Server is willing to receive local model from client!")
+        print("Server: Socket is created")
+        s.bind(("localhost", 9999))
+        print("Server socket is bound to an address and port number")
+        s.listen(10)
+        print("Server is listening for a connection request")
+
+        # Accept connection request
+        connected = False
+        accept_timeout = 1000000
+        s.settimeout(accept_timeout)
+        try:
+            connection, address = s.accept()
+            print("Server: Connected to a client: {client_info}.".format(client_info=address))
+            connected = True
+        except socket.timeout:
+            print(
+                "Server: A socket.timeout exception occurred because the server did not receive any connection for {accept_timeout} seconds.".format(
+                    accept_timeout=accept_timeout))
+
+        # Receive local model from client
+        if connected:
+            received_data = b""
+            while True:
+                packet = connection.recv(4096)
+                if not packet:
+                    break
+                received_data += packet
+            print("Server: Received model data from clients. Size:{}".format(sys.getsizeof(received_data)))
+            connection.close()
+            print("Server: Connection to client closed")
+
+        s.close()
+        print("Server socket closed")
+
+        w = pickle.loads(received_data)
+
         LocalTrain.join()
         loss = LocalTrain.loss
         # Server aggregate local models
-        w = torch.load(f'./saved_models/Local_iter{iter}_client{index_client}.pth')
+        # w = torch.load(f'./saved_models/Local_iter{iter}_client{index_client}.pth')
         w_locals.append(w)
         loss_locals.append(copy.deepcopy(loss))
     # Update global weights

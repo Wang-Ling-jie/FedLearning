@@ -66,5 +66,17 @@ class local_update():
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
 
         # Clients save local model parameters
-        torch.save(net.state_dict(), f'./saved_models/Local_iter{iter}_client{client}.pth')
+        # torch.save(net.state_dict(), f'./saved_models/Local_iter{iter}_client{client}.pth')
+        # Clients send local model parameters to server
+        s = socket.socket()
+        print("Client: Socket is created.")
+        s.connect(("localhost", 9999))
+        print("Client connected to the server")
+        print("Client: Sending local model to server")
+        w_local = net.state_dict()
+        data = pickle.dumps(w_local)
+        s.sendall(data)
+        print("Client: Local model sent to the server, Size:{size}".format(size=len(data)))
+        s.close()
+        print("Client: Connection to server closed")
         return sum(epoch_loss) / len(epoch_loss)
